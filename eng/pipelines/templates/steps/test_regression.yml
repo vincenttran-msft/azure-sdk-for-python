@@ -40,6 +40,7 @@ steps:
       arguments: >-
         "$(TargetingString)"
         --service="${{ parameters.ServiceDirectory }}"
+        --dependentService="$(DependentService)"
         --whl-dir="${{ parameters.BuildStagingDirectory }}"
         --mark-arg="not cosmosEmulator"
 
@@ -50,6 +51,7 @@ steps:
       arguments: >-
         "$(TargetingString)"
         --service="${{ parameters.ServiceDirectory }}"
+        --dependentService="$(DependentService)"
         --whl-dir="${{ parameters.BuildStagingDirectory }}"
         --verify-latest=False
         --mark-arg="not cosmosEmulator"
