@@ -197,6 +197,8 @@ jobs:
             Path: eng/pipelines/templates/stages/regression-job-matrix.json
             Selection: sparse
             GenerateVMJobs: true
+      CloudConfig:
+        Cloud: Public
       DependsOn:
         - 'Build'
       AdditionalParameters:
