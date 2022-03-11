@@ -19,6 +19,9 @@ parameters:
   - name: CloudConfig
     type: object
     default: {}
+  - name: TestTimeoutInMinutes
+    type: number
+    default: 60
 
 # The variable TargetingString is set by template `eng/pipelines/templates/steps/targeting-string-resolve.yml`. This template is invoked from yml files:
 #     eng/pipelines/templates/jobs/ci.tests.yml

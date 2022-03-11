@@ -203,5 +203,4 @@ jobs:
         - 'Build'
       AdditionalParameters:
         ServiceDirectory: ${{ parameters.ServiceDirectory }}
-        BuildTargetingString: ${{ parameters.BuildTargetingString }}
         TestTimeoutInMinutes: ${{ parameters.TestTimeoutInMinutes }}
