@@ -7,10 +7,10 @@ parameters:
   - name: DependsOn
     type: string
     default: ''
-  - name: BuildStagingDirectory:
+  - name: BuildStagingDirectory
     type: string
     value: '$(Build.ArtifactStagingDirectory)'
-  - name: DevFeedName:
+  - name: DevFeedName
     type: string
     value: 'public/azure-sdk-for-python'
 
