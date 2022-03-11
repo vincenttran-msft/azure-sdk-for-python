@@ -1,9 +1,18 @@
 parameters:
-  ServiceDirectory: ''
-  BuildStagingDirectory: $(Build.ArtifactStagingDirectory)
-  DevFeedName: 'public/azure-sdk-for-python'
-  TestTimeoutInMinutes: 90
-  Matrix: ''
+  - name: ServiceDirectory
+    type: string
+    default: ''
+  - name: Matrix
+    type: string
+  - name: DependsOn
+    type: string
+    default: ''
+  - name: BuildStagingDirectory:
+    type: string
+    value: '$(Build.ArtifactStagingDirectory)'
+  - name: DevFeedName:
+    type: string
+    value: 'public/azure-sdk-for-python'
 
 # The variable TargetingString is set by template `eng/pipelines/templates/steps/targeting-string-resolve.yml`. This template is invoked from yml files:
 #     eng/pipelines/templates/jobs/ci.tests.yml
@@ -22,8 +31,9 @@ jobs:
       )
     timeoutInMinutes: ${{ parameters.TestTimeoutInMinutes }}
 
-    dependsOn:
-      - 'Build'
+  - name: DependsOn
+    type: string
+    default: ''
 
     strategy:
       matrix: $[ ${{ parameters.Matrix }} ]
