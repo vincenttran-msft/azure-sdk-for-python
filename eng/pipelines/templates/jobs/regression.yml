@@ -56,11 +56,8 @@ jobs:
 
     variables:
     - template: ../variables/globals.yml
-    - name: InjectedPackages
-      value: ${{ parameters.InjectedPackages }}
     - name: PROXY_URL
       value: "http://localhost:5000"
-
 
     # Please use `$(TargetingString)` to refer to the python packages glob string. This was previously `${{ parameters.BuildTargetingString }}`.
     steps:
