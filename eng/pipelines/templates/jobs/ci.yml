@@ -216,7 +216,3 @@ jobs:
     - template: /eng/pipelines/templates/steps/targeting-string-resolve.yml
       parameters:
         BuildTargetingString: ${{ parameters.BuildTargetingString }}
-
-    - template: ../steps/test_regression.yml
-      parameters:
-        ServiceDirectory: ${{ parameters.ServiceDirectory }}
