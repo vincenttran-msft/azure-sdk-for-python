@@ -12,7 +12,7 @@ parameters:
 # The variable DependentService is set from the matrix configuration.
 
 jobs:
- - job:
+  - job:
     displayName: 'RegressTest'
     condition: |
       and(
