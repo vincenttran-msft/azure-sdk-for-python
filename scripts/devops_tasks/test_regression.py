@@ -314,8 +314,10 @@ class RegressionTest:
 # This method identifies package dependency map for all packages in azure sdk
 def find_package_dependency(glob_string, repo_root_dir, dependent_service):
     package_paths = process_glob_string(glob_string, repo_root_dir, "", "Regression")
+    dependent_service_filter ='sdk/{}'.format(dependent_service)
+
     dependency_map = {}
-    for pkg_root in package_paths:
+    for pkg_root in package_paths if dependent_service_filter in pkg_root else False:
         _, _, _, requires = parse_setup(pkg_root)
 
         # Get a list of package names from install requires
@@ -368,7 +370,7 @@ def run_main(args):
         logging.info("Path {} already exists. Skipping step to clone github repo".format(code_repo_root))
 
     # find package dependency map for azure sdk
-    pkg_dependency = find_package_dependency(AZURE_GLOB_STRING, code_repo_root, dependent_service)
+    pkg_dependency = find_package_dependency(AZURE_GLOB_STRING, code_repo_root, args.dependent_service)
 
     # Create regression text context. One context object will be reused for all packages
     context = RegressionContext(args.whl_dir, temp_dir, str_to_bool(args.verify_latest), args.mark_arg)
@@ -399,8 +401,9 @@ if __name__ == "__main__":
     )
     
     parser.add_argument(
-        "--dependentService",
+        "--dependent-service",
         dest="dependent_service",
+        default="",
         help=("Optional filter to force regression testing of only dependent packages of service X."),
     )
 
