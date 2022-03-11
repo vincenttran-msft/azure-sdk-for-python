@@ -12,7 +12,7 @@ parameters:
 
 jobs:
  - job:
-    displayName: 'Test'
+    displayName: 'RegressTest'
     condition: |
       and(
         succeededOrFailed(),
@@ -26,7 +26,7 @@ jobs:
 
     strategy:
       matrix:
-        - Name: Python_ci_test_base
+        - Name: Python_ci_regression_matrix
           Path: eng/pipelines/templates/stages/regression-job-matrix.json
           Selection: sparse
           GenerateVMJobs: true
