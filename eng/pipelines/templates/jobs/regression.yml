@@ -3,6 +3,7 @@ parameters:
   BuildStagingDirectory: $(Build.ArtifactStagingDirectory)
   DevFeedName: 'public/azure-sdk-for-python'
   TestTimeoutInMinutes: 90
+  Matrix: ''
 
 # The variable TargetingString is set by template `eng/pipelines/templates/steps/targeting-string-resolve.yml`. This template is invoked from yml files:
 #     eng/pipelines/templates/jobs/ci.tests.yml
@@ -25,11 +26,7 @@ jobs:
       - 'Build'
 
     strategy:
-      matrix:
-        - Name: Python_ci_regression_matrix
-          Path: eng/pipelines/templates/stages/regression-job-matrix.json
-          Selection: sparse
-          GenerateVMJobs: true
+      matrix: $[ ${{ parameters.Matrix }} ]
 
     pool:
       name: $(Pool)
