@@ -10,6 +10,7 @@
 
 import argparse
 import glob
+import pdb
 import sys
 import os
 import logging
@@ -314,22 +315,22 @@ class RegressionTest:
 # This method identifies package dependency map for all packages in azure sdk
 def find_package_dependency(glob_string, repo_root_dir, dependent_service):
     package_paths = process_glob_string(glob_string, repo_root_dir, "", "Regression")
-    dependent_service_filter ='sdk/{}'.format(dependent_service)
+    dependent_service_filter = os.path.join('sdk', dependent_service.lower())
 
     dependency_map = {}
-    for pkg_root in package_paths if dependent_service_filter in pkg_root else False:
-        _, _, _, requires = parse_setup(pkg_root)
+    for pkg_root in package_paths:
+        if dependent_service_filter in pkg_root:
+            _, _, _, requires = parse_setup(pkg_root)
 
-        # Get a list of package names from install requires
-        required_pkgs = [parse_require(r)[0] for r in requires]
-        required_pkgs = [p for p in required_pkgs if p.startswith("azure")]
+            # Get a list of package names from install requires
+            required_pkgs = [parse_require(r)[0] for r in requires]
+            required_pkgs = [p for p in required_pkgs if p.startswith("azure")]
 
-        for req_pkg in required_pkgs:
-            if req_pkg not in dependency_map:
-                dependency_map[req_pkg] = []
-            dependency_map[req_pkg].append(pkg_root)
+            for req_pkg in required_pkgs:
+                if req_pkg not in dependency_map:
+                    dependency_map[req_pkg] = []
+                dependency_map[req_pkg].append(pkg_root)
 
-    logging.info("Package dependency: {}".format(dependency_map))
     return dependency_map
 
 
@@ -371,6 +372,12 @@ def run_main(args):
 
     # find package dependency map for azure sdk
     pkg_dependency = find_package_dependency(AZURE_GLOB_STRING, code_repo_root, args.dependent_service)
+
+    if args.generate_deps_only:
+        print(pkg_dependency)
+        exit(0)
+
+    logging.info("Package dependency: {}".format(dependency_map))
 
     # Create regression text context. One context object will be reused for all packages
     context = RegressionContext(args.whl_dir, temp_dir, str_to_bool(args.verify_latest), args.mark_arg)
@@ -436,6 +443,13 @@ if __name__ == "__main__":
             'The complete argument for `pytest -m "<input>"`. This can be used to exclude or include specific pytest markers.'
             '--mark_arg="not cosmosEmulator"'
         ),
+    )
+
+    parser.add_argument(
+        "--generate_dependents_only",
+        dest="generate_deps_only",
+        action="store_true",
+        help="Should this only generate the set of discovered dependent services? Given the targeting string?",
     )
 
     args = parser.parse_args()
