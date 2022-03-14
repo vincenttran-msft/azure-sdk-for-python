@@ -29,13 +29,19 @@ parameters:
 #     eng/pipelines/templates/jobs/live.test.yml
 # The variable DependentService is set from the matrix configuration.
 
+# or(
+#           eq(variables['Run.Regression'], 'true'),
+#           and(
+#             eq(variables['System.TeamProject'], 'internal'),
+#             eq(variables['Build.Reason'], 'Schedule')
+#           )
+#         ),
 jobs:
   - job:
     displayName: 'RegressTest'
     condition: |
       and(
         succeededOrFailed(),
-        ne(variables['Skip.Test'], 'true'),
         ne(${{ parameters.Matrix }}, '{}')
       )
     timeoutInMinutes: ${{ parameters.TestTimeoutInMinutes }}
