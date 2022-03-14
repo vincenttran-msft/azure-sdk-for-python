@@ -202,5 +202,6 @@ jobs:
       DependsOn:
         - 'Build'
       AdditionalParameters:
+        BuildTargetingString: ${{ parameters.BuildTargetingString }}
         ServiceDirectory: ${{ parameters.ServiceDirectory }}
         TestTimeoutInMinutes: ${{ parameters.TestTimeoutInMinutes }}
