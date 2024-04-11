@@ -2214,6 +2214,34 @@ class TestStorageFile(StorageRecordedTestCase):
 
     @FileSharePreparer()
     @recorded_by_proxy
+    def test_copy_file_with_bad_url(self, **kwargs):
+        storage_account_name = kwargs.pop("storage_account_name")
+        storage_account_key = kwargs.pop("storage_account_key")
+
+        self._setup(storage_account_name, storage_account_key)
+        source_client = self._create_file()
+        file_client = ShareFileClient(
+            self.account_url(storage_account_name, "file"),
+            share_name=self.share_name,
+            file_path='file1copy',
+            credential=storage_account_key)
+
+        # Act
+        with pytest.raises(ResourceNotFoundError) as e:
+            copy = file_client.start_copy_from_url(source_client.url + "bad")
+
+        assert e is not None
+
+        # Assert
+        assert copy is not None
+        assert copy['copy_status'] == 'success'
+        assert copy['copy_id'] is not None
+
+        copy_file = file_client.download_file().readall()
+        assert copy_file == self.short_byte_data
+
+    @FileSharePreparer()
+    @recorded_by_proxy
     def test_copy_file_with_existing_file_oauth(self, **kwargs):
         storage_account_name = kwargs.pop("storage_account_name")
         storage_account_key = kwargs.pop("storage_account_key")

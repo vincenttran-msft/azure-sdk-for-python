@@ -2138,7 +2138,7 @@ class TestStorageFileAsync(AsyncStorageRecordedTestCase):
             file_path=file_name,
             credential=storage_account_key)
         await file_client.create_file(1024)
-        
+
         share_client = self.fsc.get_share_client(self.share_name)
         snapshot = await share_client.create_snapshot()
         snapshot_client = ShareFileClient(
@@ -2212,7 +2212,7 @@ class TestStorageFileAsync(AsyncStorageRecordedTestCase):
         data = b'abcdefghijklmnop' * 32
         resp1 = await file_client.upload_range(data, offset=0, length=512)
         resp2 = await file_client.upload_range(data, offset=1024, length=512)
-        
+
         share_client = self.fsc.get_share_client(self.share_name)
         snapshot = await share_client.create_snapshot()
         snapshot_client = ShareFileClient(
@@ -2263,6 +2263,27 @@ class TestStorageFileAsync(AsyncStorageRecordedTestCase):
 
     @FileSharePreparer()
     @recorded_by_proxy_async
+    async def test_copy_file_with_bad_file(self, **kwargs):
+        storage_account_name = kwargs.pop("storage_account_name")
+        storage_account_key = kwargs.pop("storage_account_key")
+
+        self._setup(storage_account_name, storage_account_key)
+        source_client = await self._create_file(storage_account_name, storage_account_key)
+        file_client = ShareFileClient(
+            self.account_url(storage_account_name, "file"),
+            share_name=self.share_name,
+            file_path='file1copy',
+            credential=storage_account_key)
+
+        # Act
+        # with pytest.raises(HttpResponseError) as e:
+        copy = await file_client.start_copy_from_url("https://error.file.core.windows.net/")
+
+        # Assert
+        # assert e is not None
+
+    @FileSharePreparer()
+    @recorded_by_proxy_async
     async def test_copy_file_with_existing_file_oauth(self, **kwargs):
         storage_account_name = kwargs.pop("storage_account_name")
         storage_account_key = kwargs.pop("storage_account_key")
@@ -2278,7 +2299,8 @@ class TestStorageFileAsync(AsyncStorageRecordedTestCase):
             token_intent=TEST_INTENT)
 
         # Act
-        copy = await file_client.start_copy_from_url(source_client.url)
+        bad_url = source_client.url + "bad"
+        copy = await file_client.start_copy_from_url(bad_url)
 
         # Assert
         assert copy is not None
@@ -2522,7 +2544,7 @@ class TestStorageFileAsync(AsyncStorageRecordedTestCase):
 
         # Assert
         assert copy_resp['copy_status'] in ['success', 'pending']
-        await self._wait_for_async_copy(self.share_name, target_file_name) 
+        await self._wait_for_async_copy(self.share_name, target_file_name)
 
         content = await file_client.download_file()
         actual_data = await content.readall()
