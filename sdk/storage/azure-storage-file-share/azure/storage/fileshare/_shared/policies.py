@@ -89,11 +89,10 @@ def is_retry(response, mode):   # pylint: disable=too-many-return-statements
             # Response code 408 is a timeout and should be retried.
             return True
         # retry if we get back an x-ms-copy-source-error-code and falls into 1 of 3 retriable scenarios
-        if response.http_response.headers.get("x-ms-copy-source-error-code"):
-            if response.http_response.headers["x-ms-copy-source-error-code"] in [StorageErrorCode.INTERNAL_ERROR,
-                                                                                     StorageErrorCode.OPERATION_TIMED_OUT,
-                                                                                     StorageErrorCode.SERVER_BUSY]:
-                return True
+        if response.http_response.headers.get("x-ms-copy-source-error-code") in [StorageErrorCode.INTERNAL_ERROR,
+                                                                                 StorageErrorCode.OPERATION_TIMED_OUT,
+                                                                                 StorageErrorCode.SERVER_BUSY]:
+            return True
         return False
     if status >= 500:
         # Response codes above 500 with the exception of 501 Not Implemented and
