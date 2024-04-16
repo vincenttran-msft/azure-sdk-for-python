@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 import requests
+from azure.core.pipeline import PipelineResponse
 from azure.core.credentials import AzureNamedKeyCredential, AzureSasCredential
 from azure.core.exceptions import ClientAuthenticationError, HttpResponseError, ResourceExistsError, ResourceNotFoundError
 from azure.storage.blob.aio import BlobServiceClient
@@ -26,10 +27,12 @@ from azure.storage.fileshare import (
     NTFSAttributes,
     ResourceTypes,
     ShareSasPermissions,
-    StorageErrorCode
+    StorageErrorCode,
 )
 from azure.storage.fileshare.aio import ShareFileClient, ShareServiceClient
+from azure.storage.fileshare._shared.policies_async import LinearRetry
 
+from devtools_testutils import RetryCounter
 from devtools_testutils.aio import recorded_by_proxy_async
 from devtools_testutils.storage.aio import AsyncStorageRecordedTestCase
 from settings.testcase import FileSharePreparer
@@ -2276,11 +2279,79 @@ class TestStorageFileAsync(AsyncStorageRecordedTestCase):
             credential=storage_account_key)
 
         # Act
-        # with pytest.raises(HttpResponseError) as e:
-        copy = await file_client.start_copy_from_url("https://error.file.core.windows.net/")
+        with pytest.raises(HttpResponseError) as e:
+            copy = await file_client.start_copy_from_url("https://error.file.core.windows.net/")
 
         # Assert
-        # assert e is not None
+        assert e is not None
+
+    @FileSharePreparer()
+    @recorded_by_proxy_async
+    async def test_copy_file_with_retryable_copy_source_error(self, **kwargs):
+        storage_account_name = kwargs.pop("storage_account_name")
+        storage_account_key = kwargs.pop("storage_account_key")
+
+        self._setup(storage_account_name, storage_account_key)
+        source_client = await self._create_file(storage_account_name, storage_account_key)
+        # retry = LinearRetry(backoff=1, retry_total=3)
+        file_client = ShareFileClient(
+            self.account_url(storage_account_name, "file"),
+            share_name=self.share_name,
+            file_path='file1copy',
+            credential=storage_account_key,)
+            # retry_total=3,)
+            # retry_policy=retry)
+
+        def response_hook(response: PipelineResponse):
+            print("***Response***")
+            response.http_response.status_code = 404
+            response.http_response.headers["x-ms-copy-source-error-code"] = "InternalError"
+            response.http_response.reason = "An internal error was successfully tested."
+
+        retry_counter = RetryCounter()
+        retry_callback = retry_counter.simple_count
+
+        # Act
+        with pytest.raises(HttpResponseError) as e:
+            copy = await file_client.start_copy_from_url("https://error.file.core.windows.net/", raw_response_hook=response_hook)
+
+        # Assert
+        assert e is not None
+
+    @FileSharePreparer()
+    @recorded_by_proxy_async
+    async def test_copy_file_with_retryable_copy_source_errorrr(self, **kwargs):
+        storage_account_name = kwargs.pop("storage_account_name")
+        storage_account_key = kwargs.pop("storage_account_key")
+
+        self._setup(storage_account_name, storage_account_key)
+        source_client = await self._create_file(storage_account_name, storage_account_key)
+        retry = LinearRetry(backoff=1, retry_total=3)
+        file_client = ShareFileClient(
+            self.account_url(storage_account_name, "file"),
+            share_name=self.share_name,
+            file_path='file1copy',
+            credential=storage_account_key,
+            retry_policy=retry)
+
+        def response_hook(response: PipelineResponse):
+            print("***Response***")
+            response.http_response.status_code = 404
+            response.http_response.headers["x-ms-copy-source-error-code"] = "InternalError"
+            response.http_response.reason = "An internal error was successfully tested."
+
+        retry_counter = RetryCounter()
+        retry_callback = retry_counter.simple_count
+
+        # Act
+        with pytest.raises(HttpResponseError) as e:
+            copy = await file_client.start_copy_from_url("https://error.file.core.windows.net/",
+                                                         raw_response_hook=response_hook,)
+                                                         # retry_callback=retry_callback)
+
+        # Assert
+        assert e is not None
+        # assert retry_counter.count is not 0
 
     @FileSharePreparer()
     @recorded_by_proxy_async
