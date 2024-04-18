@@ -1393,6 +1393,33 @@ class TestStorageQueue(StorageRecordedTestCase):
 
     @QueuePreparer()
     @recorded_by_proxy
+    def test_badd_audience_queue_service_client(self, **kwargs):
+        storage_account_name = kwargs.pop("storage_account_name")
+        storage_account_key = kwargs.pop("storage_account_key")
+
+        # Arrange
+        qsc = QueueServiceClient(self.account_url(storage_account_name, "queue"), storage_account_key)
+        qsc.get_service_properties()
+
+        # Act
+        token_credential = self.generate_oauth_token()
+        qsc_good = QueueServiceClient(
+            self.account_url(storage_account_name, "queue"), credential=token_credential,
+            audience=f'https://{storage_account_name}.queue.core.windows.net'
+        )
+        qsc_bad = QueueServiceClient(
+            self.account_url(storage_account_name, "queue"), credential=token_credential,
+            audience=f'https://compute.azure.com/'
+        )
+
+        qsc_good.get_service_properties()
+
+        # Assert
+        with pytest.raises(ClientAuthenticationError):
+            qsc_bad.get_service_properties()
+
+    @QueuePreparer()
+    @recorded_by_proxy
     def test_storage_account_audience_queue_client(self, **kwargs):
         storage_account_name = kwargs.pop("storage_account_name")
         storage_account_key = kwargs.pop("storage_account_key")
