@@ -207,7 +207,7 @@ class SharedKeyCredentialPolicy(SansIOHTTPPolicy):
             self._get_canonicalized_resource_query(request)
 
         self._add_authorization_header(request, string_to_sign)
-        # logger.debug("String_to_sign=%s", string_to_sign)
+        logger.debug("String_to_sign=%s", repr(string_to_sign))
 
 
 class StorageHttpChallenge(object):
