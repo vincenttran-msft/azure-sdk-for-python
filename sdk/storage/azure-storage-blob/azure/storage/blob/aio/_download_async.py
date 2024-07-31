@@ -218,12 +218,12 @@ class StorageStreamDownloader(Generic[T]):  # pylint: disable=too-many-instance-
 
     def __init__(
         self,
-        clients: "AzureBlobStorage" = None,  # type: ignore [assignment]
-        config: "StorageConfiguration" = None,  # type: ignore [assignment]
+        clients: Optional["AzureBlobStorage"] = None,
+        config: Optional["StorageConfiguration"] = None,
         start_range: Optional[int] = None,
         end_range: Optional[int] = None,
-        validate_content: bool = None,  # type: ignore [assignment]
-        encryption_options: Dict[str, Any] = None,  # type: ignore [assignment]
+        validate_content: Optional[bool] = None,
+        encryption_options: Optional[Dict[str, Any]] = None,
         max_concurrency: int = 1,
         name: str = None,  # type: ignore [assignment]
         container: str = None,  # type: ignore [assignment]

@@ -34,9 +34,9 @@ class BlobQueryReader(object):  # pylint: disable=too-many-instance-attributes
         errors: Any = None,
         record_delimiter: str = '\n',
         encoding: Optional[str] = None,
-        headers: Dict[str, Any] = None,  # type: ignore [assignment]
+        headers: Optional[Dict[str, Any]] = None,  # type: ignore [assignment]
         response: Any = None,
-        error_cls: Type["BlobQueryError"] = None,  # type: ignore [assignment]
+        error_cls: Optional[Type["BlobQueryError"]] = None,  # type: ignore [assignment]
     ) -> None:
         self.name = name
         self.container = container
