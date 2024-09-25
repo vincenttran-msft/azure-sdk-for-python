@@ -434,6 +434,7 @@ class BlobClient(StorageAccountHostsMixin, StorageEncryptionMixin):  # pylint: d
         blob_type: Union[str, BlobType] = BlobType.BLOCKBLOB,
         length: Optional[int] = None,
         metadata: Optional[Dict[str, str]] = None,
+        region_size = 4 * 1024 * 1024,
         **kwargs: Any
     ) -> Dict[str, Any]:
         """Creates a new blob from a data source with automatic chunking.
@@ -592,6 +593,7 @@ class BlobClient(StorageAccountHostsMixin, StorageEncryptionMixin):  # pylint: d
             sdk_moniker=self._sdk_moniker,
             client=self._client,
             **kwargs)
+        options['region_size'] = region_size
         if blob_type == BlobType.BlockBlob:
             return upload_block_blob(**options)
         if blob_type == BlobType.PageBlob:

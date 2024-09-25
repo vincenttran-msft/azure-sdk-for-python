@@ -12,6 +12,7 @@ from azure.core.exceptions import ResourceExistsError, ResourceModifiedError, Ht
 from ._encryption import (
     _ENCRYPTION_PROTOCOL_V1,
     _ENCRYPTION_PROTOCOL_V2,
+    _ENCRYPTION_V2_PROTOCOLS,
     encrypt_blob,
     GCMBlobEncryptionStream,
     generate_blob_encryption_data,
@@ -73,6 +74,7 @@ def upload_block_blob(  # pylint: disable=too-many-locals, too-many-statements
     headers: Dict[str, Any],
     validate_content: bool,
     max_concurrency: Optional[int],
+    region_size,
     length: Optional[int] = None,
     **kwargs: Any
 ) -> Dict[str, Any]:
@@ -99,7 +101,7 @@ def upload_block_blob(  # pylint: disable=too-many-locals, too-many-statements
                 raise TypeError('Blob data should be of type bytes.')
 
             if encryption_options.get('key'):
-                encryption_data, data = encrypt_blob(data, encryption_options['key'], encryption_options['version'])
+                encryption_data, data = encrypt_blob(data, encryption_options['key'], encryption_options['version'], region_size)
                 headers['x-ms-meta-encryptiondata'] = encryption_data
 
             response = client.upload(
@@ -142,7 +144,7 @@ def upload_block_blob(  # pylint: disable=too-many-locals, too-many-statements
                     encryptor, padder = get_blob_encryptor_and_padder(cek, iv, True)
 
                 # Adjust total_size for encryption V2
-                if encryption_options['version'] == _ENCRYPTION_PROTOCOL_V2:
+                if encryption_options['version'] in _ENCRYPTION_V2_PROTOCOLS:
                     # Adjust total_size for encryption V2
                     total_size = adjusted_count
                     # V2 wraps the data stream with an encryption stream

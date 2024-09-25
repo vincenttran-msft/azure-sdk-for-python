@@ -240,7 +240,7 @@ class GCMBlobEncryptionStream:
         self.current = b''
         self.nonce_counter = 0
 
-    def read(self, size: int = -1) -> bytes:
+    def read(self, size: int = -1, region_size = _GCM_REGION_DATA_LENGTH) -> bytes:
         """
         Read data from the stream. Specify -1 to read all available data.
 
@@ -263,7 +263,7 @@ class GCMBlobEncryptionStream:
 
             if remaining > 0:
                 # Read one region of data and encrypt it
-                data = self.data_stream.read(_GCM_REGION_DATA_LENGTH)
+                data = self.data_stream.read(region_size)
                 if len(data) == 0:
                     # No more data to read
                     break
@@ -340,7 +340,7 @@ def modify_user_agent_for_encryption(
     request_options['user_agent_overwrite'] = True
 
 
-def get_adjusted_upload_size(length: int, encryption_version: str) -> int:
+def get_adjusted_upload_size(length: int, encryption_version: str, region_size = _GCM_REGION_DATA_LENGTH) -> int:
     """
     Get the adjusted size of the blob upload which accounts for
     extra encryption data (padding OR nonce + tag).
@@ -353,9 +353,9 @@ def get_adjusted_upload_size(length: int, encryption_version: str) -> int:
     if encryption_version == _ENCRYPTION_PROTOCOL_V1:
         return length + (16 - (length % 16))
 
-    if encryption_version == _ENCRYPTION_PROTOCOL_V2:
+    if encryption_version in _ENCRYPTION_V2_PROTOCOLS:
         encryption_data_length = _GCM_NONCE_LENGTH + _GCM_TAG_LENGTH
-        regions = math.ceil(length / _GCM_REGION_DATA_LENGTH)
+        regions = math.ceil(length / region_size)
         return length + (regions * encryption_data_length)
 
     raise ValueError("Invalid encryption version specified.")
@@ -488,7 +488,8 @@ def _generate_encryption_data_dict(
         kek: KeyEncryptionKey,
         cek: bytes,
         iv: Optional[bytes],
-        version: str
+        version: str,
+        region_size: int = _GCM_REGION_DATA_LENGTH,
     ) -> TypedOrderedDict[str, Any]:
     """
     Generates and returns the encryption metadata as a dict.
@@ -508,6 +509,10 @@ def _generate_encryption_data_dict(
         # We must pad the version to 8 bytes for AES Keywrap algorithms
         to_wrap = _ENCRYPTION_PROTOCOL_V2.encode().ljust(8, b'\0') + cek
         wrapped_cek = kek.wrap_key(to_wrap)
+    elif version == _ENCRYPTION_PROTOCOL_V2_1:
+        # We must pad the version to 8 bytes for AES Keywrap algorithms
+        to_wrap = _ENCRYPTION_PROTOCOL_V2_1.encode().ljust(8, b'\0') + cek
+        wrapped_cek = kek.wrap_key(to_wrap)
 
     # Build the encryption_data dict.
     # Use OrderedDict to comply with Java's ordering requirement.
@@ -522,11 +527,11 @@ def _generate_encryption_data_dict(
     if version == _ENCRYPTION_PROTOCOL_V1:
         encryption_agent['EncryptionAlgorithm'] = _EncryptionAlgorithm.AES_CBC_256
 
-    elif version == _ENCRYPTION_PROTOCOL_V2:
+    elif version in _ENCRYPTION_V2_PROTOCOLS:
         encryption_agent['EncryptionAlgorithm'] = _EncryptionAlgorithm.AES_GCM_256
 
         encrypted_region_info = OrderedDict()
-        encrypted_region_info['DataLength'] = _GCM_REGION_DATA_LENGTH
+        encrypted_region_info['DataLength'] = region_size
         encrypted_region_info['NonceLength'] = _GCM_NONCE_LENGTH
 
     encryption_data_dict: TypedOrderedDict[str, Any] = OrderedDict()
@@ -534,7 +539,7 @@ def _generate_encryption_data_dict(
     encryption_data_dict['EncryptionAgent'] = encryption_agent
     if version == _ENCRYPTION_PROTOCOL_V1:
         encryption_data_dict['ContentEncryptionIV'] = encode_base64(iv)
-    elif version == _ENCRYPTION_PROTOCOL_V2:
+    elif version in _ENCRYPTION_V2_PROTOCOLS:
         encryption_data_dict['EncryptedRegionInfo'] = encrypted_region_info
     encryption_data_dict['KeyWrappingMetadata'] = OrderedDict({'EncryptionLibrary': 'Python ' + VERSION})
 
@@ -656,7 +661,9 @@ def _validate_and_unwrap_cek(
         raise AttributeError(_ERROR_OBJECT_INVALID.format('key encryption key', 'get_kid'))
     if not hasattr(key_encryption_key, 'unwrap_key') or not callable(key_encryption_key.unwrap_key):
         raise AttributeError(_ERROR_OBJECT_INVALID.format('key encryption key', 'unwrap_key'))
-    if encryption_data.wrapped_content_key.key_id != key_encryption_key.get_kid():
+    val1 = encryption_data.wrapped_content_key.key_id
+    val2 = key_encryption_key.get_kid()
+    if val1 != val2:
         raise ValueError('Provided or resolved key-encryption-key does not match the id of key used to encrypt.')
     # Will throw an exception if the specified algorithm is not supported.
     content_encryption_key = key_encryption_key.unwrap_key(
@@ -748,7 +755,7 @@ def _decrypt_message(
     return decrypted_data
 
 
-def encrypt_blob(blob: bytes, key_encryption_key: KeyEncryptionKey, version: str) -> Tuple[str, bytes]:
+def encrypt_blob(blob: bytes, key_encryption_key: KeyEncryptionKey, version: str, region_size = 4 * 1024 * 1024) -> Tuple[str, bytes]:
     """
     Encrypts the given blob using the given encryption protocol version.
     Wraps the generated content-encryption-key using the user-provided key-encryption-key (kek).
@@ -790,7 +797,7 @@ def encrypt_blob(blob: bytes, key_encryption_key: KeyEncryptionKey, version: str
         encryptor = cipher.encryptor()
         encrypted_data = encryptor.update(padded_data) + encryptor.finalize()
 
-    elif version == _ENCRYPTION_PROTOCOL_V2:
+    elif version in _ENCRYPTION_V2_PROTOCOLS:
         # AES256 GCM uses 256 bit (32 byte) keys and a 12 byte nonce.
         content_encryption_key = os.urandom(32)
         initialization_vector = None
@@ -798,13 +805,13 @@ def encrypt_blob(blob: bytes, key_encryption_key: KeyEncryptionKey, version: str
         data = BytesIO(blob)
         encryption_stream = GCMBlobEncryptionStream(content_encryption_key, data)
 
-        encrypted_data = encryption_stream.read()
+        encrypted_data = encryption_stream.read(region_size=region_size)
 
     else:
         raise ValueError("Invalid encryption version specified.")
 
     encryption_data = _generate_encryption_data_dict(key_encryption_key, content_encryption_key,
-                                                     initialization_vector, version)
+                                                     initialization_vector, version, region_size=region_size)
     encryption_data['EncryptionMode'] = 'FullBlob'
 
     return dumps(encryption_data), encrypted_data

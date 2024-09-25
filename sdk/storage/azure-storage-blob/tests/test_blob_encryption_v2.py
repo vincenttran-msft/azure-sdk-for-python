@@ -5,6 +5,7 @@
 # --------------------------------------------------------------------------
 
 import base64
+import hashlib
 import os
 from io import BytesIO
 from json import dumps, loads
@@ -54,9 +55,9 @@ class TestStorageBlobEncryptionV2(StorageRecordedTestCase):
     def _get_blob_reference(self):
         return self.get_resource_name(TEST_BLOB_PREFIX)
 
-    def enable_encryption_v2(self, kek):
+    def enable_encryption_v2(self, kek, version = '2.0'):
         self.bsc.require_encryption = True
-        self.bsc.encryption_version = '2.0'
+        self.bsc.encryption_version = version
         self.bsc.key_encryption_key = kek
     # --------------------------------------------------------------------------
 
@@ -191,6 +192,28 @@ class TestStorageBlobEncryptionV2(StorageRecordedTestCase):
 
         # Act
         blob.upload_blob(content, overwrite=True)
+        data = blob.download_blob().readall()
+
+        # Assert
+        assert content == data
+
+    @BlobPreparer()
+    @recorded_by_proxy
+    @mock.patch('os.urandom', mock_urandom)
+    def test_encryption_kek_2_1(self, **kwargs):
+        storage_account_name = kwargs.pop("storage_account_name")
+        storage_account_key = kwargs.pop("storage_account_key")
+
+        self._setup(storage_account_name, storage_account_key)
+        kek = KeyWrapper('key1')
+        self.enable_encryption_v2(kek, '2.1')
+
+        blob = self.bsc.get_blob_client(self.container_name, self._get_blob_reference())
+        content = b'abcdef' * 10240
+
+        # Act
+        blob.upload_blob(content, overwrite=True)
+        # blob.upload_blob(content, overwrite=True, region_size=4) #doesn't work
         data = blob.download_blob().readall()
 
         # Assert
@@ -1212,3 +1235,31 @@ class TestStorageBlobEncryptionV2(StorageRecordedTestCase):
 
         blob.upload_blob(content, overwrite=True, raw_request_hook=assert_user_agent)
         blob.download_blob(raw_request_hook=assert_user_agent).readall()
+
+    @BlobPreparer()
+    @recorded_by_proxy
+    @mock.patch('os.urandom', mock_urandom)
+    def test_v2_stuff(self, **kwargs):
+        storage_account_name = kwargs.pop("storage_account_name")
+        storage_account_key = kwargs.pop("storage_account_key")
+
+        # kek = KeyWrapper('/keys/key1')
+        kek = KeyWrapper('key1')
+        # conn_str = 
+        bsc = BlobServiceClient.from_connection_string(conn_str)
+
+        bsc.require_encryption = True
+        bsc.encryption_version = '2.1'
+        bsc.key_encryption_key = kek
+
+        # blob_client = bsc.get_blob_client('test-cse', 'for-python-testing/2ca0c0000c26ddb79bf171d407578298.bin')
+        blob_client = bsc.get_blob_client('test-cse', 'for-python-testing/9ef7426e948452e54628528f82060bc9.bin')
+
+        # Act
+        data = blob_client.download_blob().readall()
+
+        # Compute hash to compare
+        file_name = '9ef7426e948452e54628528f82060bc9'
+        computed_hash = hashlib.md5(data)
+        # Assert
+        assert file_name == computed_hash.hexdigest()
